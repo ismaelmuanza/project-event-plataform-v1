@@ -1,0 +1,30 @@
+import { PrismaClient } from '@prisma/client';
+
+export type UploadedFile = {
+    originalname: string
+    filename: string
+    path: string
+    mimetype: string
+    size: number
+  }
+  
+  const prisma = new PrismaClient()
+
+  export class UploadImageService {
+    async execute(file: UploadedFile) {
+      if (!file) {
+        throw new Error('Arquivo não encontrado');
+      }
+  
+      await prisma.upload.create({
+        data: {
+          originalName: file.originalname,
+          filename: file.filename,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size,
+        },
+      });
+    }
+  }
+  

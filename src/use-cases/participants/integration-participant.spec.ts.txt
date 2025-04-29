@@ -1,0 +1,112 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { RegisterParticipantUseCase } from './register-participant-use-case';
+import { InMemoryParticipantRepository } from '@/repositories/in-memory/in-memory-participant-repository';
+import { SendEmailService } from '@/services/send-email-service';
+import { InMemoryEventRepository } from '@/repositories/in-memory/in-memory-event-repository';
+import { PrismaParticipantRepository } from '@/repositories/prisma/prisma-participant-repository';
+import { addHours } from 'date-fns';
+import { RegisterUserUseCase } from '../users/register-user-use-case';
+import { CreateEventUseCase } from '../events/create-event-use-case';
+import { InMemoryUserRepository } from '@/repositories/in-memory/in-memory-repository-prisma';
+import { SchedulerService } from '@/services/scheduler-service';
+import { NotificationService } from '@/services/notification-service';
+import { PrismaUserRepository } from '@/repositories/prisma/prisma-user-repository';
+import { PrismaEventRepository } from '@/repositories/prisma/prisma-event-repository';
+
+
+describe('Register Participant Integration', () => {
+
+    // users
+    let userRepository: InMemoryUserRepository;
+    let registerUserUseCase: RegisterUserUseCase;
+    // events
+    let eventRepository: InMemoryEventRepository;
+    let createEventUseCase: CreateEventUseCase;
+    
+    // schedulerService service
+    let notificationService: NotificationService
+
+    // schedulerService service
+    let schedulerService: SchedulerService
+
+    // service email
+    let emailService: SendEmailService;
+    
+    // participants
+    let participantRepository: InMemoryParticipantRepository;
+    let registerParticipantUseCase: RegisterParticipantUseCase;
+    
+    beforeEach(() => {
+        
+       // email service instances
+       emailService = new SendEmailService();
+
+      // users instances
+      userRepository = new InMemoryUserRepository()
+      registerUserUseCase = new RegisterUserUseCase(userRepository, emailService);
+      
+      // notification service instances
+      notificationService = new NotificationService()
+
+      // schedulerService instances
+      schedulerService = new SchedulerService(notificationService, eventRepository)
+
+      // events instances
+      eventRepository = new InMemoryEventRepository();
+      createEventUseCase = new CreateEventUseCase(eventRepository, schedulerService)
+      // users instances
+      participantRepository = new InMemoryParticipantRepository();
+      registerParticipantUseCase = new RegisterParticipantUseCase(participantRepository, eventRepository, emailService);
+
+    vi.spyOn(emailService, 'sendEmail').mockResolvedValue();
+  });
+
+  it('should be able to register a participant and send a confirmation email using anothers use cases required', async () => {
+
+    const user = await registerUserUseCase.execute({
+        id: 'user-1',
+        name: 'John Doe',
+        email: 'johndoe@example.com',
+        password: '123456',
+      });
+
+    const user2 = await registerUserUseCase.execute({
+        id: 'user-2',
+        name: 'John Doe 2',
+        email: 'johndoe2@example.com',
+        password: '123456',
+      });
+      
+    const event = await createEventUseCase.execute({
+            id: 'event-123',
+            title: 'Test Event',
+            description: 'This is a test event.',
+            date: addHours(new Date(Date.now() + 60 * 60 * 1000), 1), // Ajustar para UTC+1
+            status: 'published',
+            creater_event: user.id,
+        });
+
+    const participant = await registerParticipantUseCase.execute({
+        id: user2.id,
+        event_id: event.id,
+        name: 'John Doe 2',
+        email: 'johndoe2@example.com',
+    });
+
+
+    const participants = await participantRepository.fetchParticipantsByEvent(event.id);
+
+    expect(participants).toHaveLength(1);
+    expect(participants[0].email).toBe('johndoe2@example.com');
+
+    expect(emailService.sendEmail).toHaveBeenCalledWith({
+      to: 'johndoe2@example.com',
+      subject: 'Event Registration Confirmation',
+      html: expect.stringContaining('You have successfully registered for the event'),
+    });
+
+    // console.log(participant)
+
+  });
+
+});

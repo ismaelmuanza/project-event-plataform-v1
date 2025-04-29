@@ -1,0 +1,37 @@
+import bcrypt from 'bcrypt';
+import { TokenService } from '@/services/token-service';
+import { UserRepositoryInterface } from '@/repositories/interface/user-repository-interface';
+
+interface AuthenticateUserRequest {
+  email: string;
+  password: string;
+}
+
+interface AuthenticateUserResponse {
+  token: string;
+}
+
+export class AuthenticateUserUseCase {
+  constructor(
+    private userRepository: UserRepositoryInterface,
+    private tokenService: TokenService,
+  ) {}
+
+  async execute(data: AuthenticateUserRequest): Promise<AuthenticateUserResponse> {
+    const user = await this.userRepository.findByEmail(data.email);
+
+    if (!user) {
+      throw new Error('Invalid credentials.');
+    }
+
+    const passwordMatch = await bcrypt.compare(data.password, user.password);
+
+    if (!passwordMatch) {
+      throw new Error('Invalid credentials.');
+    }
+
+    const token = this.tokenService.generateToken({ userId: user.id, email: user.email });
+
+    return { token };
+  }
+}

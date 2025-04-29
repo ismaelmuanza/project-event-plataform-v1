@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  password     String
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  events       Event[]       @relation("UserEvents")
+  participants Participant[] @relation("UserParticipants")
+
+  @@map("users")
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  date          DateTime
+  status        String
+  creater_event String
+
+  publishDate DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  user         User          @relation("UserEvents", fields: [creater_event], references: [id])
+  participants Participant[] @relation("EventParticipants")
+
+  @@map("events")
+}
+
+model Participant {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  event_id   String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  event Event @relation("EventParticipants", fields: [event_id], references: [id])
+  user  User  @relation("UserParticipants", fields: [id], references: [id])
+
+  @@map("participants")
+}

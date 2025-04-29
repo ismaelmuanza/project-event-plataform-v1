@@ -1,0 +1,55 @@
+import { Redis } from 'ioredis';
+import { NotificationRepositoryInterface } from '@/repositories/interface/notification-repository-interface';
+import { CreateNotificationUseCase } from '@/use-cases/notifications/create-notification-use-case';
+
+export class NotificationWorkerService {
+  private interval: NodeJS.Timeout;
+
+  constructor(
+    private redisClient: Redis,
+    private notificationRepository: NotificationRepositoryInterface,
+    private intervalMs = 60000, // 1 minuto
+  ) {}
+
+  start() {
+    this.interval = setInterval(() => this.checkAndSendNotifications(), this.intervalMs);
+  }
+
+  stop() {
+    clearInterval(this.interval);
+  }
+
+  private async checkAndSendNotifications() {
+    const scheduledKey = 'scheduled_notifications';
+
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+
+    // Buscar notificações até agora
+    const notifications = await this.redisClient.zrangebyscore(
+      scheduledKey,
+      0,
+      nowInSeconds
+    );
+
+    if (notifications.length === 0) {
+      return;
+    }
+
+    for (const notificationJson of notifications) {
+      const notification = JSON.parse(notificationJson);
+
+      const createNotificationUseCase = new CreateNotificationUseCase(this.notificationRepository);
+
+      await createNotificationUseCase.execute({
+        userId: notification.userId,
+        message: notification.message,
+        type: notification.type,
+      });
+
+      console.log(`Notification sent for user ${notification.userId}`);
+    }
+
+    // Remover notificações já enviadas
+    await this.redisClient.zremrangebyscore(scheduledKey, 0, nowInSeconds);
+  }
+}

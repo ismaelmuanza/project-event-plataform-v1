@@ -1,0 +1,85 @@
+### register user
+POST http://localhost:3333/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "johndoe@example.com",
+  "password": "123456"
+}
+
+### create event
+POST http://localhost:3333/events
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNDU4ZTFhMC0yYTY5LTQ1YmUtOTAyYi1kZTUwODUzMDMzMzgiLCJpYXQiOjE3NDU3MTYxNDMsImV4cCI6MTc0NTgwMjU0M30.Tur1nsWSUyeHdbTHcMnQhdvTdXrFb1YMYVAmgBBI35w
+
+{
+  "title": "Tech Conference 2025 2",
+  "description": "A conference about the latest in tech.",
+  "date": "2025-04-27T10:02:15.000Z"
+  
+}
+
+### Find all events
+GET http://localhost:3333/events
+
+### create scheduled event
+POST http://localhost:3333/events
+Content-Type: application/json
+
+{
+  "title": "Scheduled Tech Conference 2",
+  "description": "A scheduled conference about the latest in tech.",
+  "date": "2025-06-01T10:00:00.000Z",
+  "creater_event": "621eb4d3-e307-49ab-a48b-7dc697e09fe5",
+  "published": true
+}
+
+### register participant
+POST http://localhost:3333/participants/6a937a69-290c-4b74-89e2-048db31392e4
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhMGYwM2NhOC0yMWRhLTRiNWYtYTc2YS0wOThjNzJjNTU1YTQiLCJlbWFpbCI6ImpvaG5kb2U1QGV4YW1wbGUuY29tIiwiaWF0IjoxNzQ1NjE1MDUxLCJleHAiOjE3NDU2MTg2NTF9.tPZlhDSGzRz8LkJN_g4RHFGj0Y-WwSGgdC99U17mK3A
+
+{
+  "name": "Jane Doe",
+  "email": "johndoe5@example.com"
+}
+
+### generate token
+POST http://localhost:3333/sessions
+Content-Type: application/json
+
+{
+  "email": "johndoe@example.com",
+  "password": "123456"
+}
+
+# participants
+### Testar registro de participante
+POST http://localhost:3333/participants/0ea6c6d3-a75d-47ae-97ed-9ad87fc8b3ed
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MTg4Y2Q5My1kNTUwLTRhNzctYTFmYi05OTBhOWEzNWJhYjkiLCJpYXQiOjE3NDU3MTgwMjcsImV4cCI6MTc0NTgwNDQyN30.G7vUQqG3gUGx4ub7q_F4rUv9lqVRfcZtlV8eG3HaGLk
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "johndoe@example.com"
+}
+
+### Find all participants
+GET http://localhost:3333/participants
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MTg4Y2Q5My1kNTUwLTRhNzctYTFmYi05OTBhOWEzNWJhYjkiLCJpYXQiOjE3NDU3MTgwMjcsImV4cCI6MTc0NTgwNDQyN30.G7vUQqG3gUGx4ub7q_F4rUv9lqVRfcZtlV8eG3HaGLk
+Content-Type: application/json
+
+### Find all users
+GET http://localhost:3333/users
+
+### Find user by ID
+GET http://localhost:3333/users/0458e1a0-2a69-45be-902b-de5085303338
+
+
+### Find user by email
+GET http://localhost:3333/users/email/john@example.com
+
+
+### get events by participant 
+GET http://localhost:3333/events/participant/4ec3dda8-7163-4f42-9189-d28d39f45408

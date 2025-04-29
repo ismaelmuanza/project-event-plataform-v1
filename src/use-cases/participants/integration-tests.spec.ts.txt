@@ -1,0 +1,109 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { RegisterUserUseCase } from './register-user-use-case';
+import { CreateEventUseCase } from './create-event-use-case';
+import { GetEventsUseCase } from '@/use-cases/get-event-use-case';
+import { RegisterParticipantUseCase } from './register-participant-use-case';
+import { FetchParticipantsUseCase } from '@/use-cases/fetch-participants-use-case';
+import { InMemoryUserRepository } from '@/repositories/in-memory-repository-prisma';
+import { InMemoryEventRepository } from '@/repositories/in-memory-event-repository';
+import { InMemoryParticipantRepository } from '@/repositories/in-memory-participant-repository';
+import { SendEmailService } from '@/services/send-email-service';
+import { SchedulerService } from '@/services/scheduler-service';
+import { NotificationService } from '@/services/notification-service';
+
+describe('Integration Tests', () => {
+  let userRepository: InMemoryUserRepository;
+  let eventRepository: InMemoryEventRepository;
+  let participantRepository: InMemoryParticipantRepository;
+  let sendEmailService: SendEmailService;
+  let registerUserUseCase: RegisterUserUseCase;
+  let createEventUseCase: CreateEventUseCase;
+  let getEventsUseCase: GetEventsUseCase;
+  let registerParticipantUseCase: RegisterParticipantUseCase;
+  let fetchParticipantsUseCase: FetchParticipantsUseCase;
+  let schedulerService: SchedulerService;
+  let notificationService: NotificationService;
+
+  beforeEach(() => {
+    userRepository = new InMemoryUserRepository();
+    eventRepository = new InMemoryEventRepository();
+    participantRepository = new InMemoryParticipantRepository();
+    sendEmailService = new SendEmailService();
+    notificationService = new NotificationService();
+    schedulerService = new SchedulerService(notificationService, eventRepository);
+
+    registerUserUseCase = new RegisterUserUseCase(userRepository, sendEmailService);
+    createEventUseCase = new CreateEventUseCase(eventRepository, schedulerService);
+    getEventsUseCase = new GetEventsUseCase(eventRepository);
+    registerParticipantUseCase = new RegisterParticipantUseCase(participantRepository, sendEmailService);
+    fetchParticipantsUseCase = new FetchParticipantsUseCase(participantRepository, eventRepository);
+  });
+
+  it.only('should register a user and send a confirmation email', async () => {
+    const user = await registerUserUseCase.execute({
+      name: 'John Doe',
+      email: 'johndoe@example.com',
+      password: '123456',
+    });
+
+    expect(user.user).toHaveProperty('id');
+    expect(user.user.email).toBe('johndoe@example.com');
+
+    expect(sendEmailService.sendEmail).toHaveBeenCalledWith({
+      to: 'johndoe@example.com',
+      subject: 'Welcome to the Platform!',
+      html: expect.stringContaining('Thank you for registering'),
+    });
+  });
+
+  it('should create an event and retrieve it', async () => {
+    const event = await createEventUseCase.execute({
+      id: 'event-123',
+      title: 'Integration Test Event',
+      description: 'Testing event creation and retrieval',
+      date: new Date().toISOString(),
+      userId: 'user-123',
+    });
+
+    const retrievedEvent = await getEventsUseCase.execute('event-123' );
+
+    expect(retrievedEvent).toHaveProperty('id', 'user-123');
+    expect(retrievedEvent[0].title).toBe('Integration Test Event');
+    expect(retrievedEvent[0].description).toBe('Testing event creation and retrieval');
+  });
+
+  it('should create an event, register participants, and list them', async () => {
+    // Step 1: Create an event
+    await createEventUseCase.execute({
+      id: 'event-123',
+      title: 'Integration Test Event',
+      description: 'Testing integration',
+      date: new Date().toISOString(),
+      userId: 'user-123',
+    });
+
+    // Step 2: Register participants
+    await registerParticipantUseCase.execute({
+      id: 'participant-1',
+      eventId: 'event-123',
+      name: 'John Doe',
+      email: 'johndoe@example.com',
+    });
+
+    await registerParticipantUseCase.execute({
+      id: 'participant-2',
+      eventId: 'event-123',
+      name: 'Jane Doe',
+      email: 'janedoe@example.com',
+    });
+
+    // Step 3: List participants
+    const participants = await fetchParticipantsUseCase.execute({ eventId: 'event-123' });
+
+    expect(participants).toHave   Length(2);
+    expect(participants).toEqual([
+      { id: expect.any(String), name: 'John Doe', email: 'johndoe@example.com' },
+      { id: expect.any(String), name: 'Jane Doe', email: 'janedoe@example.com' },
+    ]);
+  });
+});
